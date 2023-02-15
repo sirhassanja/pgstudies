@@ -1,0 +1,554 @@
+[language=Dart]
+// ignore_for_file: must_be_immutable
+
+import 'dart:io';
+
+import 'package:flutter/material.dart';
+import 'package:gap/gap.dart';
+import 'package:google_fonts/google_fonts.dart';a
+// import 'package:flutter_tflite/flutter_tflite.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:lottie/lottie.dart';
+import 'package:tflite/tflite.dart';
+
+void main() {
+runApp(const MyApp());
+}
+
+class MyApp extends StatelessWidget {
+const MyApp({super.key});
+
+// This widget is the root of your application.
+@override
+Widget build(BuildContext context) {
+return MaterialApp(
+title: 'Yoruba Artifacts',
+debugShowCheckedModeBanner: false,
+theme: ThemeData(
+primarySwatch: Colors.blue,
+),
+home: const MyHomePage(),
+);
+}
+}
+
+enum Artifacts {
+zero('Lúwòó Olókòtó Àkùn'),
+one('Lúwòó Onífìlà'),
+two('Morèmi'),
+three('Obabìnrin Lúwòó'),
+four('Olójòńpetí'),
+five('Olókòtó'),
+six('Olóríògbófo'),
+seven('Onide'),
+eight('Onífìlà'),
+nine('Oníkorobá'),
+ten('Onìsùkú'),
+eleven('Orí Lájúà'),
+twelve('Orí Odùduwà'),
+thirteen('Orí Olókun'),
+……………,
+
+const Artifacts(this.title);
+final String title;
+}
+
+class MyHomePage extends StatefulWidget {
+const MyHomePage({super.key, e});
+
+@override
+State<MyHomePage> createState() => _MyHomePageState();
+}
+
+class _MyHomePageState extends State<MyHomePage> {
+late bool _isLoading;
+File? _image;
+List? _outputs;
+
+final _imagePicker = ImagePicker();
+
+@override
+void initState() {
+super.initState();
+_isLoading = true;
+loadModel().then((value) {
+setState(() {
+_isLoading = false;
+});
+});
+_image;
+_outputs;
+}
+
+@override
+void dispose() {
+Tflite.close();
+super.dispose();
+}
+
+final List<String> labels = <String>[
+"assets/labels.txt",
+"assets/english.txt",
+"assets/yoruba.txt",
+];
+loadModel() async {
+String? res = await Tflite.loadModel(
+labels: "assets/labels.txt",
+model: "assets/model_unquant.tflite",
+numThreads: 1, // defaults to 1
+// labels: labels[index],
+isAsset:
+true, // defaults to true, set to false to load resources outside assets
+useGpuDelegate:
+false // defaults to false, set to true to use GPU delegate
+);
+print('Recognition Response $res');
+}
+
+Future pickImage() async {
+var image = await _imagePicker.pickImage(source: ImageSource.gallery);
+if (image == null) return null;
+setState(() {
+_isLoading = true;
+_image = File(image.path);
+});
+await classifyImage(_image);
+}
+
+// Classifying Selected Image
+classifyImage(File? image) async {
+var output = await Tflite.runModelOnImage(
+// var output = await Tflite.runModelOnImage(
+path: image!.path,
+numResults: 5,
+threshold: 0.5,
+imageMean: 127.5,
+imageStd: 127.5,
+);
+setState(() {
+_isLoading = false;
+// Declear List _outputs in the classwill be used to show the classifed class name and confidence
+_outputs = output;
+});
+}
+
+@override
+Widget build(BuildContext context) {
+return Scaffold(
+appBar: AppBar(
+automaticallyImplyLeading: false,
+backgroundColor: Color(0xFF4B39EF),
+title: Text(
+'Ifẹ̀ Heads ++',
+style: GoogleFonts.poppins(
+color: Colors.white,
+fontSize: 22,
+fontWeight: FontWeight.w600,
+),
+),
+centerTitle: false,
+elevation: 2,
+),
+body: _isLoading
+? Container(
+alignment: Alignment.center,
+child: CircularProgressIndicator(),
+)
+: SingleChildScrollView(
+child: Container(
+padding: EdgeInsets.all(20),
+child: Column(
+mainAxisSize: MainAxisSize.max,
+mainAxisAlignment: MainAxisAlignment.center,
+children: [
+_image == null
+? NoImageFound(
+assets: 'assets/lotties/lf30_editor_iklprodp.json',
+title:
+'No Image Available Yet Kindly Choose Another Image',
+)
+: Align(
+alignment: AlignmentDirectional(-1, 0),
+child: Image.file(
+_image!,
+width: MediaQuery.of(context).size.width,
+height: 500,
+fit: BoxFit.cover,
+),
+),
+const SizedBox(height: 20),
+if (_outputs != null && _outputs!.isNotEmpty)
+Column(
+crossAxisAlignment: CrossAxisAlignment.center,
+children: [
+Row(
+mainAxisAlignment: MainAxisAlignment.start,
+crossAxisAlignment: CrossAxisAlignment.start,
+children: [
+Expanded(
+child: Text(
+'ARTIFACT NAME:',
+textAlign: TextAlign.center,
+style: GoogleFonts.poppins(
+color: Color(0xFF4B39EF),
+fontSize: 20,
+fontWeight: FontWeight.bold,
+),
+),
+),
+const Gap(10),
+Expanded(
+child: Text(
+'${_outputs![0]["label"]}'
+.replaceAll(RegExp(r'[0-9]'), ''),
+style: GoogleFonts.poppins(
+color: Colors.black,
+fontSize: 20,
+fontWeight: FontWeight.bold,
+),
+),
+),
+],
+),
+// Text(description().toString()),
+const Gap(20),
+if (_outputs != null &&
+_outputs!.isNotEmpty &&
+_outputs![0]["label"]
+.contains(Artifacts.zero.title))
+ImageDesc(
+engTitle: 'English Description:',
+engDesc:
+'This is one of the ancient Ifẹ̀ heads named  Ọbabìnrin Lúwòó gbàgídá  featuring  plain face and beaded conical headwear; it has no neck.',
+yorTitle: 'Àpẹ̀júwe ní Ède Yorùbá:',
+yorDesc:
+'Èyí ni ọ̀kan níní àwọn ère ayébáyé Ifẹ̀: Ọbabìnrin Lúwòó gbàgídá  pẹ̀lú ilà ọ̀bọ̀rọ́ àti fìlà òkòtó àkún ṣùgbọ́n kò lórùn.',
+)
+else if (_outputs != null &&
+_outputs!.isNotEmpty &&
+_outputs![0]["label"]
+.contains(Artifacts.one.title))
+ImageDesc(
+engTitle: 'English Description:',
+engDesc: 'This information is not available',
+yorTitle: 'Àpẹ̀júwe ní Ède Yorùbá:',
+yorDesc: 'Alaye yi ko si',
+)
+else if (_outputs != null &&
+_outputs!.isNotEmpty &&
+_outputs![0]["label"]
+.contains(Artifacts.two.title))
+ImageDesc(
+engTitle: 'English Description:',
+engDesc: 'This information is not available',
+yorTitle: 'Àpẹ̀júwe ní Ède Yorùbá:',
+yorDesc: 'Alaye yi ko si',
+)
+else if (_outputs != null &&
+_outputs!.isNotEmpty &&
+_outputs![0]["label"]
+.contains(Artifacts.three.title))
+ImageDesc(
+engTitle: 'English Description:',
+engDesc:
+'This is one of the ancient Ifẹ̀ heads named  Lúwòó gbàgídá featuring  plain face with conical beaded headwear; it has no neck.',
+yorTitle: 'Àpẹ̀júwe ní Ède Yorùbá:',
+yorDesc:
+'Èyí ni ọ̀kan níní àwọn ère ayébáyé Ifẹ̀: Lúwòó gbàgídá  pẹ̀lú ilà ọ̀bọ̀rọ́ àti fìlà òkòtó àkún ṣùgbọ́n kò lórùn.',
+)
+else if (_outputs != null &&
+_outputs!.isNotEmpty &&
+_outputs![0]["label"]
+.contains(Artifacts.four.title))
+ImageDesc(
+engTitle: 'English Description:',
+engDesc:
+'This is one of the ancient Ifẹ̀ heads named  Olójòńpetí  featuring  Ọbalùfọ̀n parallel facial striation and òjòńpetí braidstyle; it has necklines.',
+yorTitle: 'Àpẹ̀júwe ní Ède Yorùbá:',
+yorDesc:
+'Èyí ni ọ̀kan níní àwọn ère ayébáyé Ifẹ̀: Olójòńpetí pẹ̀lú ilà Ọbalùfọ̀n àti irun òjòńpetí; ó sì tún wé lọ́rùn.',
+)
+else if (_outputs != null &&
+_outputs!.isNotEmpty &&
+_outputs![0]["label"]
+.contains(Artifacts.five.title))
+ImageDesc(
+engTitle: 'English Description:',
+engDesc: 'This information is not available',
+yorTitle: 'Àpẹ̀júwe ní Ède Yorùbá:',
+yorDesc: 'Alaye yi ko si',
+)
+else if (_outputs != null &&
+_outputs!.isNotEmpty &&
+_outputs![0]["label"]
+.contains(Artifacts.six.title))
+ImageDesc(
+engTitle: 'English Description:',
+engDesc:
+'This is one of the ancient Ifẹ̀ heads named  Olóríògbófo featuring  Ọbalùfọ̀n parallel facial striation with oríògbófo headwear; it has necklines.',
+yorTitle: 'Àpẹ̀júwe ní Ède Yorùbá:',
+yorDesc:
+'Èyí ni ọ̀kan níní àwọn ère ayébáyé Ifẹ̀: Olóríògbófo pẹ̀lú ilà Ọbalùfọ̀n àti fìlà oríògbófo; ó sì tún wé lọ́rùn.',
+)
+else if (_outputs != null &&
+_outputs!.isNotEmpty &&
+_outputs![0]["label"]
+.contains(Artifacts.seven.title))
+ImageDesc(
+engTitle: 'English Description:',
+engDesc:
+'This is one of the ancient Ifẹ̀ heads named Onídẹ featuring  Ọbalùfọ̀n parallel facial striation with onídẹ headwear and has no neck.',
+yorTitle: 'Àpẹ̀júwe ní Ède Yorùbá:',
+yorDesc:
+'Èyí ni ọ̀kan níní àwọn ère ayébáyé Ifẹ̀: Onídẹ pẹ̀lú ilà Ọbalùfọ̀n àti fìlà onídẹ ṣùgbọ́n kò lórùn.',
+)
+else if (_outputs != null &&
+_outputs!.isNotEmpty &&
+_outputs![0]["label"]
+.contains(Artifacts.eight.title))
+ImageDesc(
+engTitle: 'English Description:',
+engDesc:
+'This is one of the ancient Ifẹ̀ heads named  Onífìlà òwú  featuring  plain face and woolen headwear; it has plain neck. ',
+yorTitle: 'Àpẹ̀júwe ní Ède Yorùbá:',
+yorDesc:
+'Èyí ni ọ̀kan níní àwọn ère ayébáyé Ifẹ̀: Onífìlà òwú  pẹ̀lú ilà ọ̀bọ̀rọ́ àti fìlà òwú ṣùgbọ́n kò wé lórùn.',
+)
+else if (_outputs != null &&
+_outputs!.isNotEmpty &&
+_outputs![0]["label"]
+.contains(Artifacts.nine.title))
+ImageDesc(
+engTitle: 'English Description:',
+engDesc: 'This information is not available',
+yorTitle: 'Àpẹ̀júwe ní Ède Yorùbá:',
+yorDesc: 'Alaye yi ko si',
+)
+else if (_outputs != null &&
+_outputs!.isNotEmpty &&
+_outputs![0]["label"]
+.contains(Artifacts.ten.title))
+ImageDesc(
+engTitle: 'English Description:',
+engDesc:
+'This is one of the ancient Ifẹ̀ heads named  Oníṣùkú  featuring  Ọbalùfọ̀n parallel facial striation and ṣùkú braidstyle; it has necklines.',
+yorTitle: 'Àpẹ̀júwe ní Ède Yorùbá:',
+yorDesc:
+'Èyí ni ọ̀kan níní àwọn ère ayébáyé Ifẹ̀: Oníṣùkú ẹlẹ́lọ̀ọ́ pẹ̀lú ilà Ọbalùfọ̀n àti irun ṣùkú ẹlẹ́lọ̀ọ́; ó sì tún wé lọ́rùn.',
+)
+else if (_outputs != null &&
+_outputs!.isNotEmpty &&
+_outputs![0]["label"]
+.contains(Artifacts.eleven.title))
+ImageDesc(
+engTitle: 'English Description:',
+engDesc: 'This information is not available',
+yorTitle: 'Àpẹ̀júwe ní Ède Yorùbá:',
+yorDesc: 'Alaye yi ko si',
+)
+else if (_outputs != null &&
+_outputs!.isNotEmpty &&
+_outputs![0]["label"]
+.contains(Artifacts.twelve.title))
+ImageDesc(
+engTitle: 'English Description:',
+engDesc:
+'This is one of the ancient Ifẹ̀ heads named  Orí Òdùduwà featuring  Ọbalùfọ̀n parallel facial striation, adé arè with ògo, layered beads and àṣẹ; it has necklines.',
+yorTitle: 'Àpẹ̀júwe ní Ède Yorùbá:',
+yorDesc:
+'Èyí ni ọ̀kan níní àwọn ère ayébáyé Ifẹ̀: Orí Òdùduwà pẹ̀lú ilà Ọbalùfọ̀n, adé arè, ògo, àkún onípele pẹ̀lú àṣẹ; ó sì tún wé lọ́rùn.',
+)
+else if (_outputs != null &&
+_outputs!.isNotEmpty &&
+_outputs![0]["label"]
+.contains(Artifacts.thirteen.title))
+ImageDesc(
+engTitle: 'English Description:',
+engDesc:
+'This is one of the ancient Ifẹ̀ heads named  Orí Olókun featuring  Ọbalùfọ̀n parallel facial striation, adé arè with ògo, layered beads and àṣẹ; it has necklines.',
+yorTitle: 'Àpẹ̀júwe ní Ède Yorùbá:',
+yorDesc:
+'Èyí ni ọ̀kan níní àwọn ère ayébáyé Ifẹ̀: Orí Olókun pẹ̀lú ilà Ọbalùfọ̀n, adé arè, ògo, àkún onípele pẹ̀lú àṣẹ; ó sì tún wé lọ́rùn.',
+)
+else if (_outputs != null &&
+_outputs!.isNotEmpty &&
+_outputs![0]["label"]
+.contains(Artifacts.fourteen.title))
+ImageDesc(
+engTitle: 'English Description:',
+engDesc: 'This information is not available',
+yorTitle: 'Àpẹ̀júwe ní Ède Yorùbá:',
+yorDesc: 'Alaye yi ko si',
+),
+const Gap(20),
+],
+),
+(_image == null)
+? Container()
+: _outputs == null
+? Text(
+'Image Not Available Yet Kindly use the below button to select an image',
+textAlign: TextAlign.center,
+style: GoogleFonts.inter(
+color: Colors.black,
+fontSize: 20,
+fontWeight: FontWeight.bold,
+),
+)
+: Container(
+child: Text(''),
+),
+// NoImageFound(
+//   assets: '',
+//   title:
+//       'Image Not Available Yet Kindly use the below button to select an image',
+// ),
+const Gap(20),
+InkWell(
+onTap: () {
+print('Button pressed ...');
+pickImage();
+// _image == null;
+},
+child: Container(
+padding: const EdgeInsets.symmetric(
+horizontal: 20, vertical: 10),
+decoration: BoxDecoration(
+color: Color(0xFF4B39EF),
+borderRadius: BorderRadius.circular(8),
+),
+child: Row(
+mainAxisAlignment: MainAxisAlignment.center,
+children: [
+Icon(
+Icons.camera,
+size: 20,
+color: Colors.white,
+),
+const Gap(5),
+Text(
+'Upload Image',
+style: GoogleFonts.poppins(
+color: Colors.white,
+fontSize: 16,
+),
+),
+],
+),
+),
+),
+const Gap(40),
+],
+),
+),
+),
+// floatingActionButton: FloatingActionButton(
+//   onPressed: pickImage,
+//   tooltip: 'Pick Image',
+//   foregroundColor: Colors.white,
+//   backgroundColor: Color(0xFF4B39EF),
+//   child: const Icon(Icons.camera),
+// ),
+);
+}
+}
+
+class ImageDesc extends StatelessWidget {
+String engTitle;
+String engDesc;
+String yorTitle;
+String yorDesc;
+ImageDesc({
+Key? key,
+required this.engTitle,
+required this.engDesc,
+required this.yorTitle,
+required this.yorDesc,
+}) : super(key: key);
+
+@override
+Widget build(BuildContext context) {
+return Column(
+crossAxisAlignment: CrossAxisAlignment.start,
+children: [
+Column(
+crossAxisAlignment: CrossAxisAlignment.start,
+children: [
+Text(
+engTitle,
+textAlign: TextAlign.center,
+style: GoogleFonts.inter(
+color: Colors.black,
+fontSize: 20,
+fontWeight: FontWeight.bold,
+),
+),
+const Gap(10),
+Text(
+engDesc,
+style: GoogleFonts.inter(
+color: Colors.black,
+fontSize: 20,
+),
+),
+const Gap(40),
+Text(
+yorTitle,
+textAlign: TextAlign.center,
+style: GoogleFonts.inter(
+color: Colors.black,
+fontSize: 20,
+fontWeight: FontWeight.bold,
+),
+),
+const Gap(10),
+Text(
+yorDesc,
+style: GoogleFonts.inter(
+color: Colors.black,
+fontSize: 20,
+),
+),
+],
+)
+],
+);
+}
+}
+
+class NoImageFound extends StatelessWidget {
+String title;
+String? assets;
+NoImageFound({
+required this.title,
+this.assets,
+Key? key,
+}) : super(key: key);
+
+@override
+Widget build(BuildContext context) {
+return Container(
+width: MediaQuery.of(context).size.width,
+height: MediaQuery.of(context).size.height / 2,
+child: Column(
+mainAxisSize: MainAxisSize.max,
+mainAxisAlignment: MainAxisAlignment.start,
+children: [
+Lottie.asset(
+assets!,
+height: 250,
+),
+const Gap(10),
+Text(
+title,
+textAlign: TextAlign.center,
+style: GoogleFonts.poppins(
+color: Colors.black,
+fontSize: 12,
+),
+),
+],
+),
+);
+}
+}
